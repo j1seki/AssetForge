@@ -7,7 +7,7 @@ import { assetBaseName, parseSizeMeters } from '../../shared/templates'
 import { runBlender, runBlenderAnim } from '../integrations/blender'
 import { kimodoGenerate, type KimodoRequest } from '../integrations/kimodo'
 import { buildKimodoRequest, type KimodoSpec } from '../anim/motion'
-import { decodeWav, judgeAudio, measureAudio } from '../../shared/audioQa'
+import { audioScore, decodeWav, judgeAudio, measureAudio } from '../../shared/audioQa'
 import { parseBvh } from '../../shared/bvh'
 import { judgeMotion, measureMotion } from '../../shared/motionQa'
 import { loadMotion, motionInfo, saveMotion, type StoredMotion } from '../anim/store'
@@ -210,14 +210,15 @@ function reviewAudio(ctx: ExecCtx, subject: Extract<Artifact, { kind: 'audio' | 
     for (const x of r.fixes) fixes.add(x)
   }
   if (skipped) technical.push(`${skipped} dosya WAV değil (ör. MP3); ölçülmedi. Ayarlar → Proje'den PCM biçimini seçersen hepsi incelenir.`)
-  // Varyasyonlu SFX'te en iyi dosya, motor katmanlarında en kötü katman belirleyicidir (hepsi kullanılır)
-  const score = scores.length ? (subject.kind === 'audioset' ? Math.min(...scores) : Math.max(...scores)) : 10
-  const pass = score >= minScore
+  // Varyasyonlu SFX'te en iyi dosya, motor katmanlarında en kötü katman belirleyicidir (hepsi kullanılır).
+  // Ölçüm yapılamadıysa QA geçemez; ölçülmemiş bir dosyaya 10/10 vermek güvenli değildir.
+  const { score, pass } = audioScore(scores, subject.kind, minScore)
+  if (!scores.length) issues.push('Ses kalite kontrolü yapılamadı: ölçülebilir WAV dosyası yok')
   const report: QAReport = {
     score,
     pass,
     issues,
-    strengths: issues.length ? [] : ['Seviye, süre ve dikişler temiz'],
+    strengths: scores.length && !issues.length ? ['Seviye, süre ve dikişler temiz'] : [],
     prompt_fix: [...fixes].join(', '),
     summary: !scores.length ? 'Ölçülebilir WAV dosyası yok' : issues.length ? issues[0] : 'Ses teknik kontrolleri geçti',
     technical
