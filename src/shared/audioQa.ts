@@ -177,3 +177,10 @@ export function judgeAudio(name: string, m: AudioMetrics, t: AudioTargets = {}):
   }
   return { score: Math.max(0, score), issues, fixes, technical }
 }
+
+/** Aggregate measured audio scores. An empty set is unmeasured, never a passing 10/10. */
+export function audioScore(scores: number[], kind: 'audio' | 'audioset', minScore: number): { score: number; pass: boolean } {
+  if (!scores.length) return { score: 0, pass: false }
+  const score = kind === 'audioset' ? Math.min(...scores) : Math.max(...scores)
+  return { score, pass: score >= minScore }
+}
