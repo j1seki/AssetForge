@@ -103,3 +103,16 @@ describe('ses ölçümü ve değerlendirme', () => {
     expect(judgeAudio('click.wav', measure(click), { loop: true }).issues.join()).toMatch(/tık/)
   })
 })
+
+describe('audio QA aggregation', () => {
+  it('fails closed when no WAV file could be measured', async () => {
+    const { audioScore } = await import('../src/shared/audioQa')
+    expect(audioScore([], 'audio', 7)).toEqual({ score: 0, pass: false })
+    expect(audioScore([], 'audioset', 7)).toEqual({ score: 0, pass: false })
+  })
+  it('uses the best SFX variation and the weakest engine layer', async () => {
+    const { audioScore } = await import('../src/shared/audioQa')
+    expect(audioScore([4, 9], 'audio', 7)).toEqual({ score: 9, pass: true })
+    expect(audioScore([4, 9], 'audioset', 7)).toEqual({ score: 4, pass: false })
+  })
+})
